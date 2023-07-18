@@ -1,87 +1,28 @@
 import 'dotenv/config'
-import puppeteer from 'puppeteer'
-import * as winston from 'winston'
+import { Telegraf } from 'telegraf'
+import { message } from 'telegraf/filters'
+import { retrieveData } from './retrieve-data'
 
-enum DataUnit {
-    GB = 'GB',
-    MB = 'MB',
-}
-
-type DataMatch = {
-    value: string
-    unit: DataUnit
-}
-
-function getTimestamp() {
-    return new Date(Date.now()).toUTCString()
-}
-
-const logger = winston.createLogger({
-    format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.timestamp({
-            format: 'YYYY-MM-DD HH:mm:ss',
-        }),
-        winston.format.printf(
-            (info) =>
-                `${info.timestamp} ${info.level}: ${info.message}` +
-                (info.splat !== undefined ? `${info.splat}` : ' ')
-        )
-    ),
-    transports: [new winston.transports.Console()],
-    level: 'debug',
-})
+const ALLOWED_USERS = process.env.ALLOWED_USERS.split(' ').map(Number)
 
 ;(async () => {
-    try {
-        logger.info(`Starting: ${getTimestamp()}`)
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox'],
-        })
-        // const browser = await puppeteer.launch({ headless: false })
-        const page = await browser.newPage()
+    const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN)
 
-        logger.info('Navigating to the login page')
-        await page.goto(process.env.LINK)
-
-        // Set screen size
-        await page.setViewport({ width: 1080, height: 1024 })
-
-        // Type into login box
-        await page.type('#UserLoginType_alias', process.env.USERNAME)
-        await page.type('#UserLoginType_password', process.env.PASSWORD)
-        await page.click('#loginButton button')
-
-        // Wait for the usage bar and extract data
-        const dataUsageSelector = '.dataUsageBar .medium'
-        const dataUsageElement = await page.waitForSelector(dataUsageSelector)
-        const dataUsageText = await dataUsageElement?.evaluate(
-            (el) => el.textContent
-        )
-
-        logger.info(`Data usage text: ${dataUsageText}`)
-
-        if (!dataUsageText) {
-            throw new Error('Error: Data usage not found.')
+    bot.on(message('text'), async (ctx) => {
+        if (!ALLOWED_USERS.includes(ctx.message.chat.id)) {
+            await ctx.telegram.sendMessage(
+                ALLOWED_USERS[0],
+                JSON.stringify(ctx.message)
+            )
+        } else {
+            const data = await retrieveData()
+            await ctx.reply(JSON.stringify(data))
         }
+    })
 
-        const regex = new RegExp(/(\d{1,3}(?:,\d{2})?) (\w{2})/g)
+    await bot.launch()
 
-        const matches: DataMatch[] = []
-
-        let match: RegExpExecArray
-        while ((match = regex.exec(dataUsageText)) !== null) {
-            matches.push({
-                value: match[1],
-                unit: match[2] as DataUnit,
-            })
-        }
-
-        logger.info(`Data usage: ${JSON.stringify(matches)}`)
-
-        await browser.close()
-    } catch (error) {
-        logger.error('Error:', error)
-    }
+    // Enable graceful stop
+    process.once('SIGINT', () => bot.stop('SIGINT'))
+    process.once('SIGTERM', () => bot.stop('SIGTERM'))
 })()
