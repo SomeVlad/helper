@@ -3,3 +3,4 @@ build
 .cache
 .serverless
 .env
+.DS_Store
