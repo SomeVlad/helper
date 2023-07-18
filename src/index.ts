@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import puppeteer from 'puppeteer'
 import * as winston from 'winston'
 
@@ -42,14 +43,14 @@ const logger = winston.createLogger({
         const page = await browser.newPage()
 
         logger.info('Navigating to the login page')
-        await page.goto('link')
+        await page.goto(process.env.LINK)
 
         // Set screen size
         await page.setViewport({ width: 1080, height: 1024 })
 
         // Type into login box
-        await page.type('#UserLoginType_alias', 'login')
-        await page.type('#UserLoginType_password', 'password')
+        await page.type('#UserLoginType_alias', process.env.USERNAME)
+        await page.type('#UserLoginType_password', process.env.PASSWORD)
         await page.click('#loginButton button')
 
         // Wait for the usage bar and extract data
