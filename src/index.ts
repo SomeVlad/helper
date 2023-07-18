@@ -34,7 +34,10 @@ const logger = winston.createLogger({
 ;(async () => {
     try {
         logger.info(`Starting: ${getTimestamp()}`)
-        const browser = await puppeteer.launch({ headless: 'new' })
+        const browser = await puppeteer.launch({
+            headless: 'new',
+            args: ['--no-sandbox'],
+        })
         // const browser = await puppeteer.launch({ headless: false })
         const page = await browser.newPage()
 
