@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es5",
+    "sourceMap": true,
+    "outDir": "build",
+    "moduleResolution": "NodeNext"
+  },
+  "exclude": [
+    "node_modules",
+    ".cache"
+  ],
+  "include": [
+    "src/**/*"
+  ]
+}
