@@ -1,9 +1,5 @@
 import * as winston from 'winston'
 
-export function getTimestamp() {
-    return new Date(Date.now()).toUTCString()
-}
-
 export const logger = winston.createLogger({
     format: winston.format.combine(
         winston.format.colorize(),

@@ -1,25 +1,30 @@
-import 'dotenv/config'
 import { Telegraf } from 'telegraf'
 import { message } from 'telegraf/filters'
-import { retrieveData } from './retrieve-data'
-
-const ALLOWED_USERS = process.env.ALLOWED_USERS.split(' ').map(Number)
-
+import { MyContext, Triggers } from './types'
+import { logger } from './utils/logger'
+import { TELEGRAM_BOT_TOKEN } from './config'
+import { handleTextMessage } from './handlers/handle-text-message'
+import { handleGetData } from './handlers/handle-get-data'
 ;(async () => {
-    const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN)
+    logger.info(`Initializing bot...`)
+    const bot = new Telegraf<MyContext>(TELEGRAM_BOT_TOKEN)
+    logger.info(`Bot initialized`)
 
-    bot.on(message('text'), async (ctx) => {
-        if (!ALLOWED_USERS.includes(ctx.message.chat.id)) {
-            await ctx.telegram.sendMessage(
-                ALLOWED_USERS[0],
-                JSON.stringify(ctx.message)
-            )
-        } else {
-            const data = await retrieveData()
-            await ctx.reply(JSON.stringify(data))
+    bot.use((ctx, next) => {
+        if (!ctx.chat?.id) {
+            return next()
         }
+
+        ctx.userId = ctx.message?.from.id || ctx.chat.id
+
+        return next()
     })
 
+    bot.on(message('text'), handleTextMessage)
+
+    bot.action(Triggers.GET_DATA, handleGetData)
+
+    logger.info(`Launching bot`)
     await bot.launch()
 
     // Enable graceful stop
